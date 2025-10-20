@@ -32,3 +32,16 @@
 - CD4052：做量程/通道选择；
 
 更多细节见后续“Proteus连线建议”。
+
+## MSP430G2553 专项说明
+- 目标：使用 G2553 + ST7920(128×64) + Timer_A 捕获，完成 Lissajous 绘制与相位估计。
+- 引脚（可在 `src/msp430g2553_pins.h` 修改）：
+	- ST7920 SPI 三线：
+		- SCLK: P1.5（BIT5）
+		- SID:  P1.7（BIT7）
+		- CS:   P1.0（BIT0，默认高有效）
+	- 捕获输入：P1.2 -> TA0.1 CCI1A（上升沿捕获）。
+- 初始化与使用：
+	- LCD：`lcd_init(); lcd_clear();` 然后使用 `lcd_draw_pixel` 绘制（建议上层维护帧缓冲再批量下发）。
+	- 捕获：`ta_capture_init(SMCLK_HZ);` 周期 ticks = `ta_capture_read_period_ticks()`，f≈SMCLK/ticks。
+	- 相位：使用 `dsp_phase` 的 `phase_diff_deg_fs`，配合 `snippets/window` 的 Hann 窗；如有工频干扰，可在 `snippets/notch` 先做陷波。
