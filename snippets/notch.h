@@ -7,16 +7,18 @@
 extern "C" {
 #endif
 
+/** Simple notch filter wrapper using a single biquad section. */
 typedef struct {
-    biquad_t sec; // 单二阶陷波
+    biquad_t sec; // single 2nd-order section
 } notch_t;
 
-// 在采样率 fs 下，对 f0 处构建陷波，Q 控制带宽
+/** Initialize notch at center frequency f0 with quality factor Q. */
 static inline void notch_init(notch_t* n, float fs, float f0, float Q) {
     if (!n) return;
     biquad_design_notch(fs, f0, Q, &n->sec);
 }
 
+/** Process one sample through notch filter. */
 static inline float notch_process(notch_t* n, float x) {
     if (!n) return x;
     return biquad_process(&n->sec, x);

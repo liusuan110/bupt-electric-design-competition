@@ -12,12 +12,14 @@ void biquad_init(biquad_t* s, float b0, float b1, float b2, float a1, float a2) 
     s->z1 = 0.0f; s->z2 = 0.0f;
 }
 
+/** Initialize biquad chain context. */
 void biquad_chain_init(biquad_chain_t* c, biquad_t* stages, size_t num) {
     if (!c) return;
     c->stages = stages;
     c->numStages = num;
 }
 
+/** Process one sample across all stages. */
 float biquad_chain_process(biquad_chain_t* c, float x) {
     if (!c || !c->stages) return x;
     float y = x;
@@ -34,6 +36,7 @@ static void normalize(float* b0, float* b1, float* b2, float* a0, float* a1, flo
     *a1 *= ia0; *a2 *= ia0; *a0 = 1.0f;
 }
 
+/** 2nd-order lowpass design with cutoff fc and Q. */
 void biquad_design_lowpass(float fs, float fc, float Q, biquad_t* out) {
     float w0 = 2.0f * (float)M_PI * fc / fs;
     float c = cosf(w0), s = sinf(w0);
@@ -48,6 +51,7 @@ void biquad_design_lowpass(float fs, float fc, float Q, biquad_t* out) {
     biquad_init(out, b0, b1, b2, -a1, -a2);
 }
 
+/** 2nd-order highpass design with cutoff fc and Q. */
 void biquad_design_highpass(float fs, float fc, float Q, biquad_t* out) {
     float w0 = 2.0f * (float)M_PI * fc / fs;
     float c = cosf(w0), s = sinf(w0);
@@ -62,6 +66,7 @@ void biquad_design_highpass(float fs, float fc, float Q, biquad_t* out) {
     biquad_init(out, b0, b1, b2, -a1, -a2);
 }
 
+/** 2nd-order bandpass design centered at f0 with Q. */
 void biquad_design_bandpass(float fs, float f0, float Q, biquad_t* out) {
     float w0 = 2.0f * (float)M_PI * f0 / fs;
     float c = cosf(w0), s = sinf(w0);
@@ -76,6 +81,7 @@ void biquad_design_bandpass(float fs, float f0, float Q, biquad_t* out) {
     biquad_init(out, b0, b1, b2, -a1, -a2);
 }
 
+/** 2nd-order notch design centered at f0 with Q. */
 void biquad_design_notch(float fs, float f0, float Q, biquad_t* out) {
     float w0 = 2.0f * (float)M_PI * f0 / fs;
     float c = cosf(w0), s = sinf(w0);

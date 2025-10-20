@@ -1,11 +1,16 @@
 #include "autocorr_freq.h"
 
+/** Dot product helper. */
 static float dot(const float* a, const float* b, size_t n) {
     float s = 0.0f;
     for (size_t i = 0; i < n; ++i) s += a[i] * b[i];
     return s;
 }
 
+/**
+ * Search for lag maximizing normalized autocorrelation within [minLag,maxLag].
+ * Guard against trivial signals by energy check; returns 0 if below threshold.
+ */
 size_t autocorr_estimate_period(const float* x, size_t n, size_t minLag, size_t maxLag) {
     if (!x || n < 4 || minLag >= maxLag) return 0;
     if (maxLag >= n) maxLag = n - 1;

@@ -8,20 +8,27 @@
 extern "C" {
 #endif
 
+/**
+ * Direct Form I (transposed) biquad:
+ * y[n] = b0*x[n] + b1*x[n-1] + b2*x[n-2] - a1*y[n-1] - a2*y[n-2]
+ * State variables (z1,z2) store intermediate values.
+ */
 typedef struct {
-    // 系数：y[n] = b0*x[n] + b1*x[n-1] + b2*x[n-2] - a1*y[n-1] - a2*y[n-2]
-    float b0, b1, b2;
-    float a1, a2;
-    // 状态
-    float z1, z2;
+    float b0, b1, b2; // feedforward
+    float a1, a2;     // feedback (note: a0 normalized to 1)
+    float z1, z2;     // state
 } biquad_t;
 
+/** Cascaded biquad chain */
 typedef struct {
-    biquad_t* stages; // 指向多个级联节
-    size_t numStages; // 节数
+    biquad_t* stages; // array of biquads
+    size_t numStages; // number of stages
 } biquad_chain_t;
 
+/** Initialize biquad with coefficients (a0 assumed normalized to 1). */
 void biquad_init(biquad_t* s, float b0, float b1, float b2, float a1, float a2);
+
+/** Process one sample through a biquad. */
 static inline float biquad_process(biquad_t* s, float x) {
     float y = s->b0 * x + s->z1;
     s->z1 = s->b1 * x - s->a1 * y + s->z2;
@@ -29,11 +36,13 @@ static inline float biquad_process(biquad_t* s, float x) {
     return y;
 }
 
+/** Initialize a cascaded chain of biquads. */
 void biquad_chain_init(biquad_chain_t* c, biquad_t* stages, size_t num);
+
+/** Process one sample through the cascaded chain. */
 float biquad_chain_process(biquad_chain_t* c, float x);
 
-// 常用滤波器设计（双一阶等效或双二阶参数化）：
-// 基于采样率 fs、中心/截止频率 f0、品质因数 Q，生成二阶节系数。
+// RBJ Audio EQ cookbook-based designs
 void biquad_design_lowpass(float fs, float fc, float Q, biquad_t* out);
 void biquad_design_highpass(float fs, float fc, float Q, biquad_t* out);
 void biquad_design_bandpass(float fs, float f0, float Q, biquad_t* out);

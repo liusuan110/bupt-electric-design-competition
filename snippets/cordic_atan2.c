@@ -1,6 +1,12 @@
 #include "cordic_atan2.h"
 #include <math.h>
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846f
+#endif
+
+
+/** Lookup table for atan(2^-i) in radians; falls back to libm for i>=24. */
 static float cordic_atan_table(int i) {
     // 角度表：atan(2^-i)
     static const float table[24] = {
@@ -16,12 +22,13 @@ static float cordic_atan_table(int i) {
     return (i < 24) ? table[i] : atanf(ldexpf(1.0f, -i));
 }
 
+/** Compute atan2 using CORDIC rotation mode. */
 float cordic_atan2f(float y, float x, int iterations) {
     // 处理象限
     float angle = 0.0f;
     float tx = x, ty = y;
     if (tx < 0.0f) {
-        tx = -tx; ty = -ty; angle = (float)M_PI; // 旋转 180°
+        tx = -tx; ty = -ty; angle = 3.14159265358979323846f; // 旋转 180°
     }
     // 旋转模式
     float z = 0.0f;

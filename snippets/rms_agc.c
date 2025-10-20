@@ -1,6 +1,7 @@
 #include "rms_agc.h"
 #include <math.h>
 
+/** Compute root-mean-square of x[0..n-1]. */
 float rms_compute(const float* x, size_t n) {
     if (!x || n == 0) return 0.0f;
     double s = 0.0; // 累加用双精度降低误差
@@ -8,6 +9,7 @@ float rms_compute(const float* x, size_t n) {
     return (float)sqrt(s / (double)n);
 }
 
+/** Initialize AGC parameters. */
 void agc_init(agc_t* a, float target, float alpha, float init_gain) {
     if (!a) return;
     a->target = target;
@@ -15,6 +17,10 @@ void agc_init(agc_t* a, float target, float alpha, float init_gain) {
     a->gain = init_gain;
 }
 
+/**
+ * Update gain based on instantaneous magnitude (EMA-like) and apply to sample.
+ * Note: For better stability, consider windowed RMS measurement before gain update.
+ */
 float agc_process(agc_t* a, float x) {
     if (!a) return x;
     // 简化：按瞬时幅度估计近似 RMS，实际可引入窗口 RMS 或 EMA

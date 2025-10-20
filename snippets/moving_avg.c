@@ -1,5 +1,6 @@
 #include "moving_avg.h"
 
+/** Initialize sliding window moving average. */
 void movavg_init(movavg_t* m, float* buf, size_t win) {
     if (!m || !buf || win == 0) return;
     m->sum = 0.0f;
@@ -10,6 +11,7 @@ void movavg_init(movavg_t* m, float* buf, size_t win) {
     for (size_t i = 0; i < win; ++i) buf[i] = 0.0f;
 }
 
+/** Update boxcar average and return current mean. */
 float movavg_update(movavg_t* m, float x) {
     if (!m || !m->buf || m->win == 0) return x;
     m->sum -= m->buf[m->idx];
@@ -20,6 +22,7 @@ float movavg_update(movavg_t* m, float x) {
     return m->sum / (float)m->filled;
 }
 
+/** Initialize EMA. */
 void ema_init(ema_t* e, float alpha) {
     if (!e) return;
     e->alpha = alpha;
@@ -27,6 +30,7 @@ void ema_init(ema_t* e, float alpha) {
     e->initialized = 0;
 }
 
+/** Update EMA and return current estimate. */
 float ema_update(ema_t* e, float x) {
     if (!e) return x;
     if (!e->initialized) {

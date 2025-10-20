@@ -1,3 +1,9 @@
+//
+// Window functions utilities
+// - Provide common window shapes: Rect, Hann, Hamming, Blackman
+// - API to generate window coefficients and apply to data
+// Notes: For large N, prefer preallocating window buffer to avoid stack overuse.
+//
 #ifndef WINDOW_H
 #define WINDOW_H
 
@@ -7,20 +13,34 @@
 extern "C" {
 #endif
 
+/** Window types */
 typedef enum {
-    WINDOW_RECT,   // 矩形窗
-    WINDOW_HANN,   // 汉宁窗
-    WINDOW_HAMMING,// 海明窗
-    WINDOW_BLACKMAN// 布莱克曼窗
+    WINDOW_RECT,    // Rectangular
+    WINDOW_HANN,    // Hann
+    WINDOW_HAMMING, // Hamming
+    WINDOW_BLACKMAN // Blackman
 } window_type_t;
 
-// 生成长度为 n 的窗口系数到 w（w 长度需 >= n）
+/**
+ * Generate window coefficients of length n into w.
+ * @param w    output buffer (length >= n)
+ * @param n    number of points
+ * @param type window type
+ */
 void window_fill(float* w, size_t n, window_type_t type);
 
-// 将窗口系数应用到 data（原地乘以窗口）
+/**
+ * Apply precomputed window w to data in-place.
+ * @param data data buffer length n, will be scaled element-wise by w
+ * @param w    window coefficients length n
+ * @param n    number of points
+ */
 void window_apply(float* data, const float* w, size_t n);
 
-// 便捷函数：无需单独缓冲，按类型直接对 data 乘窗
+/**
+ * Convenience: generate and apply window in-place without a separate buffer.
+ * For large n, prefer window_fill + window_apply to avoid stack usage.
+ */
 void window_apply_inplace(float* data, size_t n, window_type_t type);
 
 #ifdef __cplusplus

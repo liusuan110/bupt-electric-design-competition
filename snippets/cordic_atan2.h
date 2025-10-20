@@ -7,7 +7,13 @@
 extern "C" {
 #endif
 
-// 迭代次数越多精度越高，嵌入式建议 12~16 次
+/**
+ * CORDIC-based atan2 approximation in radians.
+ * @param y          ordinate
+ * @param x          abscissa
+ * @param iterations number of CORDIC iterations (typ. 12..16 for embedded)
+ * @return angle in radians in (-pi, pi]
+ */
 float cordic_atan2f(float y, float x, int iterations);
 
 #ifdef __cplusplus

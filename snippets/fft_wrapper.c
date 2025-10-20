@@ -1,3 +1,14 @@
+/**
+ * 轻量 RFFT 封装：优先使用 CMSIS-DSP（arm_rfft_fast_f32），否则回退到朴素 DFT（仅用于小 N 验证）。
+ * 使用方法：
+ *  - rfft_init(ctx, N, fs, buf, mag)
+ *  - 填充 buf[N] 为实数时域样本
+ *  - rfft_compute_mag(ctx, hann)
+ *  - 输出 mag[N/2]（0..Nyquist）的幅度谱
+ * 注意：
+ *  - 回退实现 O(N^2)，只适合小 N（<=512）与离线验证。
+ *  - CMSIS 路径需链接 arm_math；临时缓冲大小受限（见 tmp[]）。
+ */
 #include "fft_wrapper.h"
 #include <math.h>
 
@@ -13,6 +24,10 @@ typedef struct {
 
 static _rfft_impl_t _impl;
 
+/**
+ * 初始化 RFFT 上下文（CMSIS 版本）。
+ * @return 0 成功；<0 失败（如不支持的 N）。
+ */
 int rfft_init(rfft_ctx_t* c, uint16_t nfft, float fs, float* buf, float* mag)
 {
     _impl.base.nfft = nfft;
@@ -34,6 +49,12 @@ static void apply_hann(float* x, uint16_t N)
     }
 }
 
+/**
+ * 计算幅度谱。
+ * @param c    上下文
+ * @param hann 是否在计算前对 buf 应用 Hann 窗（1=是，0=否）
+ * @return 0 成功；<0 错误（缓冲不足/未初始化等）。
+ */
 int rfft_compute_mag(rfft_ctx_t* c, int hann)
 {
     if (!_impl.base.buf || !_impl.base.mag) return -1;
@@ -59,11 +80,13 @@ static void apply_hann(float* x, uint16_t N)
     }
 }
 
+/** 回退：初始化（朴素 DFT） */
 int rfft_init(rfft_ctx_t* c, uint16_t nfft, float fs, float* buf, float* mag)
 {
     c->nfft = nfft; c->fs = fs; c->buf = buf; c->mag = mag; return 0;
 }
 
+/** 回退：计算幅度谱（O(N^2)） */
 int rfft_compute_mag(rfft_ctx_t* c, int hann)
 {
     if (!c || !c->buf || !c->mag) return -1;

@@ -5,6 +5,13 @@
 #define M_PI 3.14159265358979323846
 #endif
 
+/**
+ * Generate window coefficients.
+ * RECT: w[i]=1
+ * HANN: 0.5*(1-cos(2*pi*i/(n-1)))
+ * HAMMING: 0.54-0.46*cos(2*pi*i/(n-1))
+ * BLACKMAN: 0.42-0.5*cos(2*pi*i/(n-1))+0.08*cos(4*pi*i/(n-1))
+ */
 void window_fill(float* w, size_t n, window_type_t type) {
     if (!w || n == 0) return;
     switch (type) {
@@ -30,11 +37,16 @@ void window_fill(float* w, size_t n, window_type_t type) {
     }
 }
 
+/** Apply precomputed window to data in-place. */
 void window_apply(float* data, const float* w, size_t n) {
     if (!data || !w) return;
     for (size_t i = 0; i < n; ++i) data[i] *= w[i];
 }
 
+/**
+ * Convenience helper generating a small window on stack and applying it.
+ * For n>256, prefer window_fill+window_apply at caller site to avoid stack.
+ */
 void window_apply_inplace(float* data, size_t n, window_type_t type) {
     if (!data || n == 0) return;
     // 简单的堆栈/静态限制：为了嵌入式安全，避免大栈分配，按小块处理
