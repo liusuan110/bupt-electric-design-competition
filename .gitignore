@@ -1,0 +1,61 @@
+# Build and temp
+*.o
+*.obj
+*.elf
+*.map
+*.out
+*.hex
+*.lst
+*.bin
+*.axf
+*.d
+*.dep
+*.log
+*.tmp
+*.bak
+~$*
+.DS_Store
+Thumbs.db
+
+# IDE/Tooling
+.settings/
+.vscode/
+.ipynb_checkpoints/
+*.uvprojx
+*.uvoptx
+*.eww
+*.ewp
+*.ewd
+*.uvgui.*
+*.uvopt
+*.suo
+*.user
+*.depend
+*.dsk
+*.launch
+*.cproject
+*.project
+
+# Proteus/EDA caches
+*.pdsbak
+*.pdslck
+*.pdsprj.*
+*.ddb
+*.DSN
+*.LOG
+*.PRJPCB.*
+*.SchDocPreview
+*.PCBDOCPreview
+*.tmp.*
+Simulation Cache/*
+Project Outputs/*
+__Previews/*
+
+# Archives
+*.zip
+*.rar
+*.7z
+
+# Python
+__pycache__/
+*.pyc
