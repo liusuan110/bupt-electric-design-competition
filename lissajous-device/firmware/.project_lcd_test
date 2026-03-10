@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<projectDescription>
+	<name>LCD_Test_Project</name>
+	<comment>LCD显示测试项目 - 2026电子信息杯</comment>
+	<projects>
+	</projects>
+	<buildSpec>
+		<buildCommand>
+			<name>org.eclipse.cdt.managedbuilder.core.genmakebuilder</name>
+			<triggers>clean,full,incremental,</triggers>
+			<arguments>
+			</arguments>
+		</buildCommand>
+		<buildCommand>
+			<name>org.eclipse.cdt.managedbuilder.core.ScannerConfigBuilder</name>
+			<triggers>full,incremental,</triggers>
+			<arguments>
+			</arguments>
+		</buildCommand>
+	</buildSpec>
+	<natures>
+		<nature>com.ti.ccstudio.core.ccsprojectnature</nature>
+		<nature>org.eclipse.cdt.core.cnature</nature>
+		<nature>org.eclipse.cdt.managedbuilder.core.managedBuildNature</nature>
+		<nature>org.eclipse.cdt.core.ccnature</nature>
+		<nature>org.eclipse.cdt.managedbuilder.core.ScannerConfigNature</nature>
+	</natures>
+	<linkedResources>
+		<link>
+			<name>lnk_msp430g2553.cmd</name>
+			<type>1</type>
+			<locationURI>MSP430_SUPPORT_ROOT/include/lnk_msp430g2553.cmd</locationURI>
+		</link>
+	</linkedResources>
+	<variableList>
+		<variable>
+			<name>MSP430_SUPPORT_ROOT</name>
+			<value>$%7BPARENT-1-CCS_INSTALL_ROOT%7D/ccs_base/msp430</value>
+		</variable>
+	</variableList>
+</projectDescription>

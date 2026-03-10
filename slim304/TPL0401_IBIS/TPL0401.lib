@@ -1,0 +1,12 @@
+* Simplified SPICE model for TPL0401 digital potentiometer
+* Node order: A  W  B
+.SUBCKT TPL0401 A W B PARAMS: RAB=100k WIPER=0.5
+
+* Compute resistances
+.func RAW(WIPER,RAB) { WIPER*RAB }
+.func RBW(WIPER,RAB) { (1-WIPER)*RAB }
+
+R_AW A W { RAW(WIPER,RAB) }
+R_WB W B { RBW(WIPER,RAB) }
+
+.ENDS TPL0401

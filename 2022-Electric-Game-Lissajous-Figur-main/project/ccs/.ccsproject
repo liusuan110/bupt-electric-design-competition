@@ -16,4 +16,5 @@
 	<origin value="F:\RNA_MSP432_Quick_entry\RNA_Empty\ccs\empty.projectspec"/>
 	<filesToOpen value=""/>
 	<isTargetManual value="false"/>
+	<activeTargetConfiguration value="targetConfigs/MSP432P401R.ccxml"/>
 </projectOptions>

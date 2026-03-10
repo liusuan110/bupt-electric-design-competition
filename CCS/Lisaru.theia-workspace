@@ -1,0 +1,22 @@
+{
+  "folders": [
+    {
+      "path": "file:///c%3A/Users/lenovo/workspace_ccstheia"
+    }
+  ],
+  "settings": {},
+  "launch": {
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "RNA_Empty(traditional)",
+        "type": "ccs-debug",
+        "request": "launch",
+        "projectInfo": {
+          "name": "RNA_Empty(traditional)",
+          "resourceId": "/RNA_Empty(traditional)"
+        }
+      }
+    ]
+  }
+}

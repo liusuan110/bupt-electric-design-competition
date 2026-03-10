@@ -6,13 +6,13 @@ SHELL = cmd.exe
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
-D:/ti/MSP432_Quick_entry-master/00_RNA_Empty(traditional)/hardware/adc.c \
-D:/ti/MSP432_Quick_entry-master/00_RNA_Empty(traditional)/hardware/key.c \
-D:/ti/MSP432_Quick_entry-master/00_RNA_Empty(traditional)/hardware/key4x4.c \
-D:/ti/MSP432_Quick_entry-master/00_RNA_Empty(traditional)/hardware/led.c \
-D:/ti/MSP432_Quick_entry-master/00_RNA_Empty(traditional)/hardware/oled.c \
-D:/ti/MSP432_Quick_entry-master/00_RNA_Empty(traditional)/hardware/tim32.c \
-D:/ti/MSP432_Quick_entry-master/00_RNA_Empty(traditional)/hardware/timA.c 
+D:/desktop/2026电子信息杯/2022-Electric-Game-Lissajous-Figur-main/hardware/adc.c \
+D:/desktop/2026电子信息杯/2022-Electric-Game-Lissajous-Figur-main/hardware/key.c \
+D:/desktop/2026电子信息杯/2022-Electric-Game-Lissajous-Figur-main/hardware/key4x4.c \
+D:/desktop/2026电子信息杯/2022-Electric-Game-Lissajous-Figur-main/hardware/led.c \
+D:/desktop/2026电子信息杯/2022-Electric-Game-Lissajous-Figur-main/hardware/oled.c \
+D:/desktop/2026电子信息杯/2022-Electric-Game-Lissajous-Figur-main/hardware/tim32.c \
+D:/desktop/2026电子信息杯/2022-Electric-Game-Lissajous-Figur-main/hardware/timA.c 
 
 C_DEPS += \
 ./hardware/adc.d \
@@ -51,12 +51,12 @@ C_DEPS__QUOTED += \
 "hardware\timA.d" 
 
 C_SRCS__QUOTED += \
-"D:/ti/MSP432_Quick_entry-master/00_RNA_Empty(traditional)/hardware/adc.c" \
-"D:/ti/MSP432_Quick_entry-master/00_RNA_Empty(traditional)/hardware/key.c" \
-"D:/ti/MSP432_Quick_entry-master/00_RNA_Empty(traditional)/hardware/key4x4.c" \
-"D:/ti/MSP432_Quick_entry-master/00_RNA_Empty(traditional)/hardware/led.c" \
-"D:/ti/MSP432_Quick_entry-master/00_RNA_Empty(traditional)/hardware/oled.c" \
-"D:/ti/MSP432_Quick_entry-master/00_RNA_Empty(traditional)/hardware/tim32.c" \
-"D:/ti/MSP432_Quick_entry-master/00_RNA_Empty(traditional)/hardware/timA.c" 
+"D:/desktop/2026电子信息杯/2022-Electric-Game-Lissajous-Figur-main/hardware/adc.c" \
+"D:/desktop/2026电子信息杯/2022-Electric-Game-Lissajous-Figur-main/hardware/key.c" \
+"D:/desktop/2026电子信息杯/2022-Electric-Game-Lissajous-Figur-main/hardware/key4x4.c" \
+"D:/desktop/2026电子信息杯/2022-Electric-Game-Lissajous-Figur-main/hardware/led.c" \
+"D:/desktop/2026电子信息杯/2022-Electric-Game-Lissajous-Figur-main/hardware/oled.c" \
+"D:/desktop/2026电子信息杯/2022-Electric-Game-Lissajous-Figur-main/hardware/tim32.c" \
+"D:/desktop/2026电子信息杯/2022-Electric-Game-Lissajous-Figur-main/hardware/timA.c" 
 
 

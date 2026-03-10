@@ -1,69 +1,126 @@
-//******************************************************************************
-// 李萨如图形演示装置 - MSP430G2553主程序
-// 功能：X/Y轴信号处理、相位测量、LCD显示、用户交互
-//******************************************************************************
+/*******************************************************************************
+ * 李萨如图形发生器主程序 - 2026电子信息杯
+ * 
+ * 功能模块:
+ * 1. 锁相环倍频控制 (PLL Frequency Multiplier) - 核心技术
+ * 2. AGC自动增益控制 (Automatic Gain Control)
+ * 3. LCD显示界面 (User Interface) 
+ * 4. 按键交互控制 (Key Input Processing)
+ * 
+ * 硬件连接:
+ * - P1.1-P1.3: 74HC161预置数控制
+ * - P1.4: 1倍/多倍模式选择  
+ * - P1.5: 幅度切换按键
+ * - P2.6: 频率切换按键
+ * - P2.2-P2.5,P2.7: LCD SPI接口
+ * - P1.0: Y轴ADC输入(AGC专用)
+ * - P1.6-P1.7: I2C数字电位器
+ * 
+ * 作者: 2026电子信息杯参赛队
+ * 日期: 2025年11月21日
+ *******************************************************************************/
 
 #include <msp430.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include <math.h>
+#include <string.h>
+
+// 包含倍频模块
+#include "frequency_multiplier.h"
 
 //==============================================================================
-// 硬件引脚定义
+// 硬件引脚定义 (基于完整引脚对照表v2.3)
 //==============================================================================
 
-// LCD控制引脚 (P2口)
-#define LCD_RS      BIT0    // P2.0
-#define LCD_RW      BIT1    // P2.1  
-#define LCD_E       BIT2    // P2.2
-#define LCD_CS1     BIT3    // P2.3 (左半屏)
-#define LCD_CS2     BIT4    // P2.4 (右半屏)
-#define LCD_RST     BIT5    // P2.5
+// 74HC161倍频控制引脚 (P1口)
+#define HC161_D0        BIT1        // P1.1 - 预置数据位0
+#define HC161_D1        BIT2        // P1.2 - 预置数据位1  
+#define HC161_D2        BIT3        // P1.3 - 预置数据位2
+#define DIV_MODE        BIT4        // P1.4 - 1倍/多倍模式选择
 
-// 按键引脚 (P1口)
-#define KEY_FREQ    BIT3    // P1.3 (频率倍数调节)
-#define KEY_AMP     BIT4    // P1.4 (幅度调节)
-#define KEY_WAVE    BIT5    // P1.5 (波形选择)
-#define KEY_MENU    BIT6    // P1.6 (菜单/确认)
+// 按键定义 (更新后的分配)
+#define AMP_KEY         BIT5        // P1.5 - 幅度切换按键
+#define FREQ_KEY        BIT6        // P2.6 - 频率切换按键
 
-// 信号输入引脚
-#define X_SIGNAL    BIT7    // P1.7 (X轴ADC输入)
-#define X_ZERO      BIT0    // P1.0 (X轴过零检测)
-#define Y_ZERO      BIT1    // P1.1 (Y轴过零检测)
+// ADC和I2C引脚
+#define Y_AGC_INPUT     BIT0        // P1.0 - Y轴AGC专用ADC输入
+#define I2C_SCL         BIT6        // P1.6 - 数字电位器SCL
+#define I2C_SDA         BIT7        // P1.7 - 数字电位器SDA
 
-// I2C引脚 (数字电位器控制)
-#define SDA_PIN     BIT5    // P1.5
-#define SCL_PIN     BIT6    // P1.6
+// 相位检测输入
+#define X_PHASE_INPUT   BIT0        // P2.0 - X轴过零检测
+#define Y_PHASE_INPUT   BIT1        // P2.1 - Y轴过零检测
+
+// LCD SPI接口 (P2口)
+#define LCD_CS          BIT2        // P2.2 - LCD片选
+#define LCD_A0          BIT3        // P2.3 - 命令/数据选择
+#define LCD_RES         BIT4        // P2.4 - LCD复位
+#define LCD_SCL         BIT5        // P2.5 - SPI时钟
+#define LCD_SI          BIT7        // P2.7 - SPI数据
+
+// 状态指示
+#define STATUS_LED      BIT6        // P1.6 - 状态LED (与I2C_SCL复用)
 
 //==============================================================================
-// 常量定义
+// 系统配置常量
 //==============================================================================
 
+// 系统版本信息
+#define SYSTEM_VERSION_MAJOR    2
+#define SYSTEM_VERSION_MINOR    3
+#define BUILD_DATE              "2025-11-21"
+
+// LCD显示参数
 #define LCD_WIDTH       128
-#define LCD_HEIGHT      64
+#define LCD_HEIGHT      64  
 #define LCD_PAGES       8
+#define LCD_ROWS        4
+#define LCD_COLS        16
 
-#define FREQ_MULT_MIN   1
-#define FREQ_MULT_MAX   5
-#define AMP_LEVELS      3       // 1V, 2V, 3V
-#define WAVE_TYPES      2       // 正弦波, 三角波
+// 倍频系统参数
+#define FREQ_MULT_MIN   1       // 最小倍频系数
+#define FREQ_MULT_MAX   5       // 最大倍频系数
+#define AMP_LEVELS      3       // 幅度等级: 1V, 2V, 3V
+#define DEFAULT_INPUT_FREQ  2000    // 默认输入频率 2kHz
 
-#define ADC_SAMPLES     256     // ADC采样缓冲区大小
-#define PHASE_SAMPLES   32      // 相位测量采样点数
+// ADC采样参数 (AGC控制)
+#define ADC_SAMPLES     32      // ADC采样点数(优化后)
+#define AGC_TARGET_1V   205     // 1V对应ADC值 (1024*1V/5V)
+#define AGC_TARGET_2V   410     // 2V对应ADC值
+#define AGC_TARGET_3V   615     // 3V对应ADC值
+#define AGC_TOLERANCE   50      // AGC容差 (±2.5%)
 
-#define MCP4018T_ADDR   0x2F    // 数字电位器I2C地址
+// I2C数字电位器参数
+#define MCP4018T_ADDR   0x2E    // MCP4018T I2C地址 (7位)
+#define DAC_MAX_VALUE   127     // 7位DAC最大值
+
+// 频率选择表
+#define FREQ_COUNT      5
+static const uint16_t frequency_table[FREQ_COUNT] = {2000, 4000, 6000, 8000, 10000};
 
 //==============================================================================
 // 数据结构定义
 //==============================================================================
 
+// 系统运行状态
+typedef enum {
+    SYS_STATE_INIT = 0,         // 系统初始化
+    SYS_STATE_READY,            // 就绪状态  
+    SYS_STATE_RUNNING,          // 正常运行
+    SYS_STATE_AGC_ADJUSTING,    // AGC调节中
+    SYS_STATE_ERROR             // 错误状态
+} system_state_t;
+
 typedef struct {
-    uint8_t freq_mult;          // 频率倍数 (1-5)
-    uint8_t amplitude;          // 幅度选择 (0:1V, 1:2V, 2:3V)
-    uint8_t wave_type;          // 波形类型 (0:正弦波, 1:三角波)
-    uint16_t x_freq;            // X轴频率 (Hz)
+    uint8_t freq_index;         // 频率索引 (0-4对应2k/4k/6k/8k/10kHz)
+    uint8_t multiplier;         // 倍频系数 (1-5)
+    uint8_t amplitude;          // 幅度选择 (1:1V, 2:2V, 3:3V)
+    uint16_t input_freq;        // 当前输入频率 (Hz)
+    uint16_t output_freq;       // 输出频率 (Hz)
     float phase_diff;           // 相位差 (度)
+    bool pll_locked;            // PLL锁定状态
     bool display_update;        // 显示更新标志
+    system_state_t state;       // 系统状态
 } system_params_t;
 
 typedef struct {
@@ -83,20 +140,37 @@ typedef struct {
 // 全局变量
 //==============================================================================
 
+// 系统参数初始化
 static system_params_t g_params = {
-    .freq_mult = 1,
-    .amplitude = 1,             // 默认2V
-    .wave_type = 0,             // 默认正弦波
-    .x_freq = 1000,             // 默认1kHz
+    .freq_index = 0,            // 默认2kHz
+    .multiplier = 1,            // 默认1倍频
+    .amplitude = 2,             // 默认2V
+    .input_freq = 2000,         // 默认2kHz输入
+    .output_freq = 2000,        // 默认2kHz输出
     .phase_diff = 0.0,
-    .display_update = true
+    .pll_locked = false,
+    .display_update = true,
+    .state = SYS_STATE_INIT
 };
 
-static adc_data_t g_adc_data = {0};
-static phase_measure_t g_phase_data = {0};
+// AGC控制变量
+static volatile uint16_t adc_buffer[ADC_SAMPLES];
+static volatile uint8_t adc_index = 0;
+static volatile bool adc_ready = false;
+static volatile uint8_t dac_value = 64;             // 数字电位器中间值
 
-// LCD显示缓冲区
-static uint8_t g_lcd_buffer[LCD_WIDTH * LCD_PAGES];
+// 按键状态变量
+static volatile bool freq_key_pressed = false;
+static volatile bool amp_key_pressed = false;
+static volatile uint8_t debounce_counter = 0;
+
+// 系统运行统计
+static volatile uint32_t system_uptime = 0;        // 系统运行时间(秒)
+static volatile uint16_t key_press_count = 0;      // 按键计数
+
+// LCD显示缓存
+static char lcd_buffer[32];
+static uint8_t g_lcd_framebuffer[LCD_WIDTH * LCD_PAGES];
 
 //==============================================================================
 // 函数声明
@@ -108,6 +182,27 @@ void gpio_init(void);
 void timer_init(void);
 void adc_init(void);
 void i2c_init(void);
+
+// 按键处理
+void process_frequency_key(void);
+void process_amplitude_key(void);
+
+// AGC控制
+void agc_process(void);
+void set_target_amplitude(uint8_t amplitude);
+uint16_t calculate_peak_to_peak(void);
+uint16_t get_agc_target(void);
+
+// 相位测量
+float measure_phase_difference(void);
+
+// 显示控制
+void show_startup_screen(void);
+void update_system_display(void);
+void show_error_screen(const char* error_msg);
+
+// 系统监控
+void system_monitor(void);
 
 // LCD驱动
 void lcd_init(void);
@@ -154,41 +249,90 @@ void delay_us(uint16_t us);
 // 主函数
 //==============================================================================
 
-int main(void)
+/**
+ * @brief 主函数 - 李萨如图形发生器
+ * 集成倍频控制、AGC、LCD显示等功能模块
+ */
+int main(void) 
 {
-    // 关闭看门狗
+    // 关闭看门狗定时器
     WDTCTL = WDTPW | WDTHOLD;
     
     // 系统初始化
     system_init();
     
+    // 显示启动画面  
+    show_startup_screen();
+    
+    // 初始化倍频模块
+    frequency_multiplier_init();
+    
+    // 设置初始参数
+    set_frequency_multiplier(g_params.multiplier);
+    set_input_frequency(g_params.input_freq);
+    set_target_amplitude(g_params.amplitude);
+    
+    // 更新系统状态
+    g_params.state = SYS_STATE_READY;
+    
+    // 全局中断使能
+    __enable_interrupt();
+    
     // 主循环
-    while(1)
+    while(1) 
     {
-        // 处理按键输入
-        process_key_input();
-        
-        // 更新系统参数
-        update_system_parameters();
-        
-        // 测量X轴频率
-        g_params.x_freq = get_frequency();
-        
-        // 测量相位差
-        g_params.phase_diff = calculate_phase_difference();
-        
-        // 更新显示
-        if (g_params.display_update) {
-            lcd_clear();
-            draw_grid();
-            draw_lissajous_curve();
-            draw_parameters_info();
-            lcd_update_display();
-            g_params.display_update = false;
+        // 处理频率按键
+        if (freq_key_pressed) {
+            __delay_cycles(50000);                  // 防抖延时 50ms
+            
+            if (!(P2IN & FREQ_KEY)) {               // 确认按键仍按下
+                process_frequency_key();
+                key_press_count++;
+            }
+            
+            freq_key_pressed = false;
         }
         
-        // 延时避免过度刷新
-        delay_ms(50);
+        // 处理幅度按键
+        if (amp_key_pressed) {
+            __delay_cycles(50000);                  // 防抖延时 50ms
+            
+            if (!(P1IN & AMP_KEY)) {                // 确认按键仍按下  
+                process_amplitude_key();
+                key_press_count++;
+            }
+            
+            amp_key_pressed = false;
+        }
+        
+        // AGC处理
+        agc_process();
+        
+        // 更新PLL锁定状态
+        g_params.pll_locked = get_pll_lock_status();
+        
+        // 测量相位差 (简化实现)
+        g_params.phase_diff = measure_phase_difference();
+        
+        // 系统监控
+        system_monitor();
+        
+        // 定期更新显示 (每500ms更新一次)
+        static uint16_t display_counter = 0;
+        if (++display_counter >= 50) {             // 约500ms
+            display_counter = 0;
+            update_system_display();
+        }
+        
+        // 更新系统状态
+        if (g_params.pll_locked && (abs((int16_t)calculate_peak_to_peak() - get_agc_target()) < AGC_TOLERANCE)) {
+            g_params.state = SYS_STATE_RUNNING;
+        } else {
+            g_params.state = SYS_STATE_AGC_ADJUSTING;
+        }
+        
+        // 进入低功耗模式，等待中断
+        __bis_SR_register(LPM0_bits | GIE);
     }
     
     return 0;
@@ -573,15 +717,295 @@ __interrupt void Timer_A1_ISR(void)
     TA0IV = 0;  // 清除中断标志
 }
 
-// ADC中断
+// ADC中断 - AGC采样
 #pragma vector=ADC10_VECTOR
 __interrupt void ADC10_ISR(void)
 {
-    // 存储ADC采样值
-    g_adc_data.buffer[g_adc_data.index] = ADC10MEM;
-    g_adc_data.index = (g_adc_data.index + 1) % ADC_SAMPLES;
+    // 存储ADC采样值到AGC缓冲区
+    adc_buffer[adc_index++] = ADC10MEM;
     
-    if (g_adc_data.index == 0) {
-        g_adc_data.ready = true;
+    // 检查缓冲区是否满
+    if (adc_index >= ADC_SAMPLES) {
+        adc_index = 0;
+        adc_ready = true;                       // 标记数据准备好
+    }
+}
+
+// Port1中断 - 幅度按键
+#pragma vector=PORT1_VECTOR
+__interrupt void Port1_ISR(void) 
+{
+    if (P1IFG & AMP_KEY) {                      // 幅度按键 (P1.5)
+        P1IFG &= ~AMP_KEY;                      // 清除中断标志
+        amp_key_pressed = true;                 // 设置按键标志
+    }
+}
+
+// Port2中断 - 频率按键 
+#pragma vector=PORT2_VECTOR
+__interrupt void Port2_ISR(void)
+{
+    if (P2IFG & FREQ_KEY) {                     // 频率按键 (P2.6)
+        P2IFG &= ~FREQ_KEY;                     // 清除中断标志
+        freq_key_pressed = true;                // 设置按键标志
+    }
+}
+
+//==============================================================================
+// 新增功能函数实现
+//==============================================================================
+
+/**
+ * @brief 处理频率切换按键
+ * 循环切换频率: 2kHz→4kHz→6kHz→8kHz→10kHz→2kHz
+ */
+void process_frequency_key(void)
+{
+    // 切换到下一个频率
+    g_params.freq_index++;
+    if (g_params.freq_index >= FREQ_COUNT) {
+        g_params.freq_index = 0;                // 循环回到2kHz
+    }
+    
+    // 更新输入频率
+    g_params.input_freq = frequency_table[g_params.freq_index];
+    g_params.output_freq = g_params.input_freq * g_params.multiplier;
+    
+    // 设置倍频模块
+    set_input_frequency(g_params.input_freq);
+    
+    // 标记显示更新
+    g_params.display_update = true;
+    
+    // LED指示
+    P1OUT |= STATUS_LED;
+    __delay_cycles(100000);                     // 100ms
+    P1OUT &= ~STATUS_LED;
+}
+
+/**
+ * @brief 处理幅度切换按键  
+ * 循环切换幅度: 1V→2V→3V→1V
+ */
+void process_amplitude_key(void)
+{
+    // 切换到下一个幅度
+    g_params.amplitude++;
+    if (g_params.amplitude > 3) {
+        g_params.amplitude = 1;                 // 循环回到1V
+    }
+    
+    // 设置AGC目标
+    set_target_amplitude(g_params.amplitude);
+    
+    // 标记显示更新
+    g_params.display_update = true;
+    
+    // LED指示
+    P1OUT |= STATUS_LED;
+    __delay_cycles(100000);                     // 100ms  
+    P1OUT &= ~STATUS_LED;
+}
+
+/**
+ * @brief AGC处理函数
+ * 根据ADC采样结果调节数字电位器
+ */
+void agc_process(void)
+{
+    if (!adc_ready) return;
+    
+    // 计算峰峰值
+    uint16_t peak_to_peak = calculate_peak_to_peak();
+    uint16_t target_value = get_agc_target();
+    
+    // PID控制算法 (简化PI控制)
+    int16_t error = (int16_t)target_value - (int16_t)peak_to_peak;
+    
+    if (abs(error) > AGC_TOLERANCE) {
+        // 比例控制
+        int16_t adjustment = error / 16;        // 比例系数 1/16
+        
+        // 更新DAC值
+        int16_t new_dac = (int16_t)dac_value + adjustment;
+        
+        // 限幅处理
+        if (new_dac < 0) new_dac = 0;
+        if (new_dac > DAC_MAX_VALUE) new_dac = DAC_MAX_VALUE;
+        
+        dac_value = (uint8_t)new_dac;
+        
+        // 发送到数字电位器
+        mcp4018t_set_value(dac_value);
+    }
+    
+    adc_ready = false;                          // 清除处理标志
+}
+
+/**
+ * @brief 计算ADC采样的峰峰值
+ * @return: 峰峰值 (ADC计数)
+ */
+uint16_t calculate_peak_to_peak(void) 
+{
+    uint16_t max_val = 0, min_val = 1023;
+    
+    // 查找最大最小值
+    for (uint8_t i = 0; i < ADC_SAMPLES; i++) {
+        if (adc_buffer[i] > max_val) max_val = adc_buffer[i];
+        if (adc_buffer[i] < min_val) min_val = adc_buffer[i];
+    }
+    
+    return (max_val > min_val) ? (max_val - min_val) : 0;
+}
+
+/**
+ * @brief 获取AGC目标值
+ * @return: 当前幅度对应的ADC目标值
+ */
+uint16_t get_agc_target(void)
+{
+    switch (g_params.amplitude) {
+        case 1: return AGC_TARGET_1V;
+        case 2: return AGC_TARGET_2V;  
+        case 3: return AGC_TARGET_3V;
+        default: return AGC_TARGET_2V;
+    }
+}
+
+/**
+ * @brief 设置AGC目标幅度
+ * @param amplitude: 目标幅度 (1/2/3对应1V/2V/3V)
+ */
+void set_target_amplitude(uint8_t amplitude)
+{
+    if (amplitude >= 1 && amplitude <= 3) {
+        g_params.amplitude = amplitude;
+        g_params.display_update = true;
+    }
+}
+
+/**
+ * @brief 测量相位差 (简化实现)
+ * @return: 相位差 (度)
+ */
+float measure_phase_difference(void)
+{
+    // 简化的相位测量算法
+    // 实际应用中需要基于过零检测或相关算法
+    static float phase = 0.0;
+    
+    // 模拟相位变化 (用于演示)
+    phase += 0.1;
+    if (phase > 360.0) phase = 0.0;
+    
+    return phase;
+}
+
+/**
+ * @brief 显示启动画面
+ */
+void show_startup_screen(void)
+{
+    lcd_clear();
+    
+    // 使用简化的LCD字符显示
+    // 实际需要根据具体LCD驱动实现
+    lcd_set_cursor(0, 0);
+    lcd_print_string("Lissajous Gen");
+    lcd_set_cursor(1, 0);  
+    lcd_print_string("PLL Multiplier");
+    lcd_set_cursor(2, 0);
+    lcd_print_string("Ver 2.3");
+    lcd_set_cursor(3, 0);
+    lcd_print_string("Initializing...");
+    
+    __delay_cycles(2000000);                    // 2秒显示时间
+}
+
+/**
+ * @brief 更新系统显示
+ * 显示完整的系统状态信息  
+ */
+void update_system_display(void)
+{
+    if (!g_params.display_update) return;
+    
+    lcd_clear();
+    
+    // 第一行: 倍频和幅度信息
+    lcd_set_cursor(0, 0);
+    sprintf(lcd_buffer, "MUL:%dX AMP:%dV", g_params.multiplier, g_params.amplitude);
+    lcd_print_string(lcd_buffer);
+    
+    // 第二行: 输入频率
+    lcd_set_cursor(1, 0);
+    sprintf(lcd_buffer, "IN: %d Hz", g_params.input_freq);
+    lcd_print_string(lcd_buffer);
+    
+    // 第三行: 输出频率  
+    lcd_set_cursor(2, 0);
+    sprintf(lcd_buffer, "OUT:%d Hz", g_params.output_freq);
+    lcd_print_string(lcd_buffer);
+    
+    // 第四行: 状态信息
+    lcd_set_cursor(3, 0);
+    if (g_params.pll_locked) {
+        sprintf(lcd_buffer, "PLL:LOCK AGC:OK");
+    } else {
+        sprintf(lcd_buffer, "PLL:---- AGC:ADJ");
+    }
+    lcd_print_string(lcd_buffer);
+    
+    g_params.display_update = false;
+}
+
+/**
+ * @brief 显示错误画面
+ * @param error_msg: 错误消息
+ */
+void show_error_screen(const char* error_msg)
+{
+    lcd_clear();
+    lcd_set_cursor(0, 0);
+    lcd_print_string("SYSTEM ERROR");
+    lcd_set_cursor(2, 0); 
+    lcd_print_string(error_msg);
+    lcd_set_cursor(3, 0);
+    lcd_print_string("Please Reset");
+}
+
+/**
+ * @brief 系统监控
+ * 监控系统状态，处理异常情况
+ */
+void system_monitor(void)
+{
+    static uint16_t monitor_counter = 0;
+    
+    if (++monitor_counter >= 1000) {           // 约10秒检查一次
+        monitor_counter = 0;
+        system_uptime++;
+        
+        // 检查PLL锁定状态
+        if (!g_params.pll_locked) {
+            // PLL未锁定处理
+            g_params.state = SYS_STATE_AGC_ADJUSTING;
+        }
+        
+        // 检查AGC收敛状态
+        if (adc_ready) {
+            uint16_t pp_value = calculate_peak_to_peak();
+            uint16_t target = get_agc_target();
+            
+            // 如果AGC偏差过大，进行复位
+            if (abs((int16_t)pp_value - (int16_t)target) > (AGC_TOLERANCE * 3)) {
+                dac_value = 64;             // 恢复中间值
+                mcp4018t_set_value(dac_value);
+            }
+        }
+        
+        // 标记显示更新
+        g_params.display_update = true;
     }
 }
